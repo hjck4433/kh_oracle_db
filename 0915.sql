@@ -361,10 +361,3 @@ SELECT EMPNO, ENAME, MGR,
     END AS CHG_MGR
 FROM EMP;
 
-
--- 다중행 함수 : 여러 행에 대해 함수가 적용되어 하나의 결과를 나타내는 함수 (집계 함수)
--- 여러 행이 입력되어 결과가 하나의 행으로 출력
--- GROUP BY : 그룹으로 묶을 때 사용
-SELECT DEPTNO, SUM(SAL), COUNT(*), ROUND(AVG(SAL)), MAX(SAL), MIN(SAL)
-FROM EMP
-GROUP BY DEPTNO;
