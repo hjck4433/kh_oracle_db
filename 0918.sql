@@ -182,3 +182,239 @@ SELECT EMPNO, ENAME, SAL, E.DEPTNO, DNAME, LOC
     AND EMPNO <= 9999
     ORDER BY EMPNO;
 
+-- 비등가 조인 : 동일 컬럼(열, 필드)없이 다른 조건을 사용하여 조인 할 때 사용 (일반적인 경우는 아님)
+SELECT * FROM EMP;
+SELECT * FROM SALGRADE;
+
+-- 오라클
+SELECT E.ENAME, E.SAL, S.GRADE
+FROM EMP E, SALGRADE S -- 두개의 테이블을 연결
+WHERE E.SAL BETWEEN S.LOSAL AND S.HISAL; -- 비등가 조인
+
+-- ANSI
+SELECT ENAME, SAL, GRADE
+FROM EMP E JOIN SALGRADE S
+ON SAL BETWEEN LOSAL AND HISAL;
+
+-- 자체 조인 : SELF 조인이라고도 함. 같은 테이블을 두 번 사용하여 자체 조인
+-- EMP 테이블에서 직속 상관의 사원번호는 MGR에 있음
+-- MGR을 이요해서 상관의 이름을 알아내기 위해서 사용할 수 있음
+SELECT E1.EMPNO, E1.ENAME, E1.MGR,
+    E2.EMPNO AS 상관사원번호,
+    E2.ENAME AS 상관이름
+FROM EMP E1 , EMP E2
+WHERE E1.MGR = E2.EMPNO;
+
+-- 내부 조인 : 동등 조인의 경우 한쪽의 컬림이 없으면 해당 행은 표시되지 않음
+-- 외부 조인은 내부 조인과 다르게 다른 한쪽의 값이 없어도 출력 됨
+-- 외부 조인은 동등 조인 조건을 만족하지 못해 누락되는 행을 출력하기 위해 사용
+
+INSERT INTO EMP(EMPNO, ENAME, JOB, MGR, HIREDATE, SAL, COMM, DEPTNO)
+    VALUES(9000,'장원영', 'SALESMAN', 7698, SYSDATE, 2000, 1000, NULL);
+
+
+-- 왼쪽 외부 조인 사용하기
+SELECT ENAME, E.DEPTNO, DNAME
+FROM EMP E, DEPT D
+WHERE E.DEPTNO = D.DEPTNO(+)
+ORDER BY E.DEPTNO;
+
+SELECT * FROM DEPT;
+
+-- 오른쪽 외부 조인 사용하기
+SELECT E.ENAME, D.DEPTNO, D.DNAME
+FROM EMP E, DEPT D
+WHERE E.DEPTNO(+) = D.DEPTNO 
+ORDER BY E.DEPTNO DESC;
+
+-- SQL -99 표준문법으로 배우는 ANSI 조인 ----------------------------------------------------
+-- NATURAL JOIN : 등가 조인 대신 사용, 자동으로 같은 열을 찾아서 조인 해줌
+SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, DEPTNO, LOC
+FROM EMP NATURAL JOIN DEPT; -- 같은 열 (DEPTNO)를 자동으로 찾음
+
+-- JOIN ~ USING : 등가 조인을 대신해서 사용, USING 키워드에 조인 기준 열을 명시하여 사용
+SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, DEPTNO, LOC
+FROM EMP E JOIN DEPT D USING(DEPTNO)
+ORDER BY DEPTNO;
+
+-- JOIN ~ ON : ANSI 등가 조인
+SELECT EMPNO, ENAME, JOB, MGR, HIREDATE, E.DEPTNO, LOC
+FROM EMP E JOIN DEPT D 
+ON E.DEPTNO = D.DEPTNO
+ORDER BY DEPTNO;
+
+
+-- ANSI LEFT OUTER JOIN 
+SELECT ENAME, E.DEPTNO, DNAME
+FROM EMP E LEFT OUTER JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO
+ORDER BY E.DEPTNO;
+
+-- ANSI RIGHT OUTER JOIN
+SELECT E.ENAME, D.DEPTNO, D.DNAME
+FROM EMP E RIGHT OUTER JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO 
+ORDER BY E.DEPTNO DESC;
+
+-- ANSI FULL OUTER JOIN  -> 장원영 / DEPTNO 40 다 결과에 나옴
+SELECT E.ENAME, D.DEPTNO, D.DNAME
+FROM EMP E FULL OUTER JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO 
+ORDER BY E.DEPTNO DESC;
+
+
+-- 1. 급여가 2000 초과인 사원들의 부서 정보, 사원 정보를 출력 (오라클과 ANSI)
+SELECT D.DEPTNO, DNAME, EMPNO, ENAME, SAL
+FROM EMP E, DEPT D
+WHERE E.DEPTNO = D.DEPTNO
+AND SAL > 2000;
+
+SELECT D.DEPTNO, DNAME, EMPNO, ENAME, SAL
+FROM EMP E JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO
+WHERE SAL > 2000;
+
+-- 2. 각 부서별 평균 급여, 최대 급여, 최소 급여, 사원수 출력
+SELECT DEPTNO, DNAME, 
+    ROUND(AVG(SAL), 2) AVG_SAL,
+    MAX(SAL) MAX_SAL,
+    MIN(SAL) MIN_SAL,
+    COUNT(*) CNT
+FROM EMP E JOIN DEPT D USING(DEPTNO)
+GROUP BY DEPTNO, DNAME;
+
+-- 3. 모든 부서 정보와 사원 정보를 부서번호, 사원 이름순으로 정렬
+SELECT D.DEPTNO, DNAME, EMPNO, ENAME, JOB, SAL
+FROM EMP E RIGHT OUTER JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO
+ORDER BY DEPTNO, ENAME;
+
+
+-- 서브쿼리 : 어떤 상황이나 조건에 따라 변할 수 있는 데이터 값을 비교하기 위해, 
+-- SQL문 안에 작성하는 작은 SELECT 문을 의미 합니다.
+-- KING이라는 이름을 가진 사원의 부서 이름을 찾기 위한 쿼리
+SELECT DNAME  FROM DEPT
+WHERE DEPTNO = (SELECT DEPTNO FROM EMP 
+                WHERE ENAME = 'KING');
+
+-- 사원 'JONES'의 급여보다 높은 급여를 받는 사원 정보 출력하기
+SELECT * 
+FROM EMP
+WHERE SAL > (SELECT SAL FROM EMP 
+            WHERE ENAME = 'JONES'); 
+
+-- EMP 테이블의 사원 정보 중에서 사원이름이 'ALLEN'인 사원의 추가 수당 보다 많은 추가 수당을 받는 사원 출력
+SELECT *
+FROM EMP
+WHERE COMM > (SELECT COMM FROM EMP
+             WHERE ENAME = 'ALLEN');
+
+-- 'JAMES'보다 이전에 입사한 사원 출력
+SELECT *
+FROM EMP
+WHERE HIREDATE < (SELECT HIREDATE FROM EMP
+                WHERE ENAME ='JAMES');
+
+-- 20번 부서에 속한 사원 중 전체 사원의 평균 급여보다 높은 급여를 받는
+-- 사원 정보와 소속 부서 정보를 조회하는 경우에 대한 쿼리를 작성하는
+SELECT EMPNO, ENAME, JOB, SAL, D.DEPTNO, DNAME, LOC
+FROM EMP E JOIN DEPT D
+ON E.DEPTNO = D.DEPTNO
+WHERE E.DEPTNO = 20 
+AND SAL > (SELECT AVG(SAL) FROM EMP);
+
+
+-- 다중행 서브퀴리 : 서브쿼리의 실행 결과 행이 여러개로 나오는 서브쿼리
+-- IN : 메인 쿼리의 데이터가 서브쿼리의 결과 중 하나라도 일치하면 TRUE
+-- 각 부서별 최대 급여와 동일한 급여를 받는 사원 정보를 출력
+SELECT * 
+FROM EMP
+WHERE SAL IN (SELECT MAX(SAL) 
+                FROM EMP
+                GROUP BY DEPTNO);
+
+-- ANY : 메인 쿼리의 비교 조건이 서브 쿼리의 여러 검색 결과 중 하나 이상 만족되면 반환
+SELECT EMPNO, ENAME, SAL
+FROM EMP
+WHERE SAL > ANY (SELECT SAL
+                    FROM EMP
+                    WHERE JOB = 'SALESMAN');
+
+-- IN , = ANY 가 값이 동일하게 나옴
+
+-- 30번 부서 사원들의 급여보다 적은 급여를 받는 사원 정보 출력
+-- ALL : 모든 조건을 만족하는 경우에 성립
+SELECT *
+FROM EMP
+WHERE SAL < ALL (SELECT SAL
+                    FROM EMP
+                    WHERE DEPTNO = 30);
+
+SELECT *
+FROM EMP
+WHERE SAL < ANY (SELECT MIN(SAL)
+                    FROM EMP
+                    WHERE DEPTNO = 30);                  
+
+
+SELECT EMPNO, ENAME, SAL
+FROM EMP 
+WHERE SAL > ALL (SELECT SAL
+            FROM EMP
+            WHERE JOB = 'MANAGER');
+
+SELECT EMPNO, ENAME, SAL
+FROM EMP 
+WHERE SAL > ANY (SELECT MAX(SAL)
+            FROM EMP
+            WHERE JOB = 'MANAGER');
+
+
+-- EXISTS 연산자 : 서브쿼리의 결과 값이 하나 이상 존재 하면 조건식이 모두 TRUE, 존재 하지 않으면 모두 FALSE
+SELECT *
+FROM EMP
+WHERE EXISTS(SELECT DNAME
+                FROM DEPT 
+                WHERE DEPTNO = 10);
+
+-- 다중열 서브 쿼리 : 서브 쿼리의 결과가 두 개 이상의 컬럼으로 반환되어 메인 쿼리에 전달하는 쿼리
+SELECT EMPNO, ENAME, SAL, DEPTNO
+FROM EMP
+WHERE (DEPTNO, SAL) IN (SELECT DEPTNO, SAL
+                        FROM EMP
+                        WHERE DEPTNO = 30);
+
+-- GROUP BY 절이 포함된 다중열 서브쿼리
+SELECT *
+FROM EMP 
+WHERE (DEPTNO, SAL) IN (SELECT DEPTNO, MAX(SAL)
+                        FROM EMP
+                        GROUP BY DEPTNO);
+
+
+-- 연습 문제
+-- 1. 전체 사원 중 ALLEN과 같은 직책(JOB)인 사원들의 사원 정보, 부서 정보 출력
+SELECT JOB, EMPNO, ENAME, SAL, DEPTNO, DNAME
+FROM EMP E JOIN DEPT D USING(DEPTNO)
+WHERE E.JOB  = (SELECT JOB FROM EMP WHERE ENAME = 'ALLEN');
+
+-- 2. 
+
+
+-- 3. 10번 부서에 근무하는 사원 중 30번 부서에는 존재하지 않는 직책을 가진 사원들의 사원 정보,
+-- 부서 정보를 출력
+SELECT EMPNO, ENAME, JOB, DEPTNO, DNAME, LOC
+FROM EMP E JOIN DEPT D USING(DEPTNO)
+WHERE DEPTNO = 10
+AND JOB NOT IN (SELECT JOB
+                FROM EMP
+                WHERE DEPTNO = 30);
+-- 4. 직책이 SALESMAN인 사람들의 최고 급여보다 높은 급여를 받는 사원들의 사원 정보, 급여 등급 정보 출력
+-- 단 서브쿼리를 활용할 때 다중행 함수를 사용하는 방법과 사용하지 않는 방법 사용
+SELECT EMPNO, ENAME, SAL, GRADE
+FROM EMP E JOIN SALGRADE S
+ON SAL BETWEEN S.LOSAL AND S.HISAL
+WHERE SAL > (SELECT MAX(SAL)
+            FROM EMP
+            WHERE JOB ='SALESMAN')
+ORDER BY EMPNO;
